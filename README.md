@@ -17,7 +17,6 @@ Building and running
 
 To build:
 ```
-opam pin add -n paf.0.2.0 https://github.com/dinosaure/paf-le-chien.git
 mirage configure -t unix --dhcp false --net direct
 make depend
 make build
