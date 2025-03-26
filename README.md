@@ -12,8 +12,8 @@ IP address. DNS queries to non-blocked domains will be passed on to
 the upstream DNS server.
 
 
-Building and running
---------------------
+Building and running as linux binary
+------------------------------------
 
 To build:
 ```
@@ -51,6 +51,47 @@ where we pass command-line arguments
 - `--no-tls=true` to disable DNS over TLS
 - `--blocklist-url=URL` is optional (currently defaults to https://blocklistproject.github.io/Lists/tracking.txt)
 
+Building and running as qubes AppVM
+-----------------------------------
+To build:
+```
+mirage configure -t qubes --dhcp true
+make depend
+make build
+```
+
+(note that other solo5 targets should be usable as well)
+
+To create a Qubes AppVM (this is similar to the procedure for qubes-mirage-firewall):
+Run those commands in dom0 to create a `mirage-hole` kernel and an AppVM using that kernel (replace the name of your AppVM where you build your unikernel `dev`, and the corresponding directory `mirage-hole`):
+```
+mkdir -p /var/lib/qubes/vm-kernels/mirage-hole/
+cd /var/lib/qubes/vm-kernels/mirage-hole/
+qvm-run -p dev 'cat mirage-hole/dist/mirage-hole.xen' > vmlinuz
+qvm-create \
+  --property kernel=mirage-hole \
+  --property kernelopts='' \
+  --property memory=32 \
+  --property maxmem=32 \
+  --property netvm=sys-net \
+  --property provides_network=False \
+  --property vcpus=1 \
+  --property virt_mode=pvh \
+  --label=green \
+  --class StandaloneVM \
+  mirage-hole
+qvm-features mirage-hole no-default-kernelopts 1
+```
+
+Setup DNS:
+In order to use it as your default resolver, you will need to run the following in dom0 (with your favorite resolver, which can eventually be another unikernel :) ):
+```
+qvm-prefs mirage-hole kernelopts -- '--dns-upstream=8.8.8.8'
+```
+And specify in sys-net that the resolver should not be retrieved from the DHCP configuration but be fixed: `10.137.0.XX` where `XX` is the IP address given by Qubes to your `mirage-hole` AppVM.
+
+Usage
+-----
 
 A DNS query to mirage-hole for a blocked domain will now map to `localhost`:
 ```
