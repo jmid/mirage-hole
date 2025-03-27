@@ -17,6 +17,10 @@ let blocklist_url =
   let doc = Arg.info ~doc:"URL to fetch the blocked list of domains from" ["blocklist-url"] in
   Mirage_runtime.register_arg Arg.(value & opt string url doc)
 
+let timeout =
+  let doc = Arg.info ~doc:"Timeout value in ns" ["timeout"] in
+  Mirage_runtime.register_arg Arg.(value & opt int64 0L doc)
+
 module Main
     (S : Tcpip.Stack.V4V6)
     (HTTP : Http_mirage_client.S) = struct
@@ -63,6 +67,7 @@ module Main
     let open Lwt.Infix in
     let cache_size = dns_cache () in
     let blocklist_url = blocklist_url () in
+    let timeout = timeout () in
 
     Log.info (fun m -> m "downloading %s" blocklist_url);
     let* result = Http_mirage_client.request
@@ -94,7 +99,7 @@ module Main
     in
     (* setup stub forwarding state and IP listeners: *)
     Stub.H.connect_device s >>= fun happy_eyeballs ->
-    let _ = Stub.create ~cache_size primary_t ~happy_eyeballs s in
+    let _ = Stub.create ~cache_size ~timeout primary_t ~happy_eyeballs s in
 
     (* Since {Stub.create} registers UDP + TCP listeners asynchronously there
        is no Lwt task.
