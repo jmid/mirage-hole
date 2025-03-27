@@ -76,6 +76,7 @@ module Main
 
   let start s http_ctx =
     let open Lwt.Syntax in
+    let open Lwt.Infix in
     let dns_upstream = dns_upstream () in
     let dns_port = dns_port () in
     let tls_hostname = tls_hostname () in
@@ -118,7 +119,6 @@ module Main
           Some [ `Tls (tls, ip, if dns_port = 53 then 853 else dns_port) ]
     in
     Log.info (fun m -> m "downloading %s" blocklist_url);
-    let open Lwt.Infix in
     let* result = Http_mirage_client.request
        http_ctx
        blocklist_url
