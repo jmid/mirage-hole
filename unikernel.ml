@@ -11,7 +11,7 @@ module Log = (val Logs.src_log src : Logs.LOG)
 
 let dns_cache =
   let doc = Arg.info ~doc:"DNS cache size" ["dns-cache"] in
-  Mirage_runtime.register_arg Arg.(value & opt int 0 doc)
+  Mirage_runtime.register_arg Arg.(value & opt (some int) None doc)
 
 let blocklist_url =
   let doc = Arg.info ~doc:"URL to fetch the blocked list of domains from" ["blocklist-url"] in
@@ -19,7 +19,7 @@ let blocklist_url =
 
 let timeout =
   let doc = Arg.info ~doc:"Timeout value in ns" ["timeout"] in
-  Mirage_runtime.register_arg Arg.(value & opt int64 0L doc)
+  Mirage_runtime.register_arg Arg.(value & opt (some int64) None doc)
 
 module Main
     (S : Tcpip.Stack.V4V6)
@@ -99,7 +99,7 @@ module Main
     in
     (* setup stub forwarding state and IP listeners: *)
     Stub.H.connect_device s >>= fun happy_eyeballs ->
-    let _ = Stub.create ~cache_size ~timeout primary_t ~happy_eyeballs s in
+    let _ = Stub.create ?cache_size ?timeout primary_t ~happy_eyeballs s in
 
     (* Since {Stub.create} registers UDP + TCP listeners asynchronously there
        is no Lwt task.
