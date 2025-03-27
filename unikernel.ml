@@ -116,22 +116,21 @@ module Main
           let tls = Tls.Config.client ~authenticator ?peer_name ?ip:ip' () in
           Some [ `Tls (tls, ip, if dns_port = 53 then 853 else dns_port) ]
     in
-    let url = blocklist_url in
-    Log.info (fun m -> m "downloading %s" url);
+    Log.info (fun m -> m "downloading %s" blocklist_url);
     let open Lwt.Infix in
     let* result = Http_mirage_client.request
        http_ctx
-       url
+       blocklist_url
        (fun resp _acc body ->
           if H2.Status.is_successful resp.status
           then
             begin
-              Logs.info (fun m -> m "downloaded %s" url);
+              Logs.info (fun m -> m "downloaded %s" blocklist_url);
               Lwt.return (parse_domain_file body)
             end
           else
             begin
-              Logs.warn (fun m -> m "%s: %a" url H2.Status.pp_hum resp.status);
+              Logs.warn (fun m -> m "%s: %a" blocklist_url H2.Status.pp_hum resp.status);
               Lwt.return ([])
             end
        )
