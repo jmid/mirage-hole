@@ -68,24 +68,25 @@ module Main
     let* result = Http_mirage_client.request
        http_ctx
        blocklist_url
-       (fun resp _acc body ->
+       (fun resp acc body ->
           if H2.Status.is_successful resp.status
           then
             begin
-              Logs.info (fun m -> m "downloaded %s" blocklist_url);
-              Lwt.return (parse_domain_file body)
+              Lwt.return (acc^body)
             end
           else
             begin
               Logs.warn (fun m -> m "%s: %a" blocklist_url H2.Status.pp_hum resp.status);
-              Lwt.return ([])
+              Lwt.return acc
             end
        )
-       []
+       ""
     in
     match result with
     | Error e -> failwith (Fmt.str "%a" Mimic.pp_error e)
-    | Ok (_resp, domains) ->
+    | Ok (_resp, body) ->
+    Logs.info (fun m -> m "downloaded %s" blocklist_url);
+    let domains = parse_domain_file body in
     let trie = List.fold_right add_dns_entries domains Dns_trie.empty in
     let primary_t =
       (* setup DNS server state: *)
