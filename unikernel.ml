@@ -9,25 +9,9 @@ open Cmdliner
 let src = Logs.Src.create "unikernel" ~doc:"Main unikernel code"
 module Log = (val Logs.src_log src : Logs.LOG)
 
-let dns_upstream =
-  let doc = Arg.info ~doc:"Upstream DNS resolver IP" ["dns-upstream"] in
-  Mirage_runtime.register_arg Arg.(value & opt (some string) None doc)
-
-let dns_port =
-  let doc = Arg.info ~doc:"Upstream DNS resolver port" ["dns-port"] in
-  Mirage_runtime.register_arg Arg.(value & opt int 53 doc)
-
-let tls_hostname =
-  let doc = Arg.info ~doc:"Hostname to use for TLS authentication" ["tls-hostname"] in
-  Mirage_runtime.register_arg Arg.(value & opt (some string) None doc)
-
-let authenticator =
-  let doc = Arg.info ~doc:"TLS authenticator" ["authenticator"] in
-  Mirage_runtime.register_arg Arg.(value & opt (some string) None doc)
-
-let no_tls =
-  let doc = Arg.info ~doc:"Disable DNS-over-TLS" ["no-tls"] in
-  Mirage_runtime.register_arg Arg.(value & opt bool false doc)
+let dns_cache =
+  let doc = Arg.info ~doc:"DNS cache size" ["dns-cache"] in
+  Mirage_runtime.register_arg Arg.(value & opt int 0 doc)
 
 let blocklist_url =
   let doc = Arg.info ~doc:"URL to fetch the blocked list of domains from" ["blocklist-url"] in
@@ -77,47 +61,9 @@ module Main
   let start s http_ctx =
     let open Lwt.Syntax in
     let open Lwt.Infix in
-    let dns_upstream = dns_upstream () in
-    let dns_port = dns_port () in
-    let tls_hostname = tls_hostname () in
-    let authenticator = authenticator () in
-    let no_tls = no_tls () in
+    let cache_size = dns_cache () in
     let blocklist_url = blocklist_url () in
 
-    let _nameservers =
-      match dns_upstream with
-      | None -> None
-      | Some ip ->
-        let ip = Ipaddr.of_string_exn ip in
-        if no_tls then
-          Some ([ `Plaintext (ip, dns_port) ])
-        else
-          let authenticator =
-            match authenticator with
-            | None ->
-              (match Ca_certs_nss.authenticator () with
-               | Ok auth -> auth
-               | Error `Msg msg ->
-                 Logs.err (fun m -> m "error retrieving ca certs: %s" msg);
-                 exit argument_error)
-            | Some str ->
-              match X509.Authenticator.of_string str with
-              | Error `Msg msg ->
-                Logs.err (fun m -> m "%s" msg);
-                exit argument_error
-              | Ok auth ->
-                let time () = Some (Ptime.v (Mirage_ptime.now_d_ps ())) in
-                auth time
-          in
-          let peer_name, ip' = match tls_hostname with
-            | None -> None, Some ip
-            | Some h ->
-              Some (try Domain_name.(host_exn (of_string_exn h))
-                    with Invalid_argument msg -> Logs.err (fun m -> m "invalid host name %S: %s" h msg); exit argument_error), None
-          in
-          let tls = Tls.Config.client ~authenticator ?peer_name ?ip:ip' () in
-          Some [ `Tls (tls, ip, if dns_port = 53 then 853 else dns_port) ]
-    in
     Log.info (fun m -> m "downloading %s" blocklist_url);
     let* result = Http_mirage_client.request
        http_ctx
@@ -147,7 +93,7 @@ module Main
     in
     (* setup stub forwarding state and IP listeners: *)
     Stub.H.connect_device s >>= fun happy_eyeballs ->
-    let _ = Stub.create (*?nameservers*) primary_t ~happy_eyeballs s in
+    let _ = Stub.create ~cache_size primary_t ~happy_eyeballs s in
 
     (* Since {Stub.create} registers UDP + TCP listeners asynchronously there
        is no Lwt task.
