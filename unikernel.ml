@@ -9,6 +9,14 @@ open Cmdliner
 let src = Logs.Src.create "unikernel" ~doc:"Main unikernel code"
 module Log = (val Logs.src_log src : Logs.LOG)
 
+let dns_upstream =
+  let doc = Arg.info ~doc:"Upstream DNS resolver IP" ["dns-upstream"] in
+  Mirage_runtime.register_arg Arg.(value & opt (some string) None doc)
+
+let dns_port =
+  let doc = Arg.info ~doc:"Upstream DNS resolver port" ["dns-port"] in
+  Mirage_runtime.register_arg Arg.(value & opt int 53 doc)
+
 let dns_cache =
   let doc = Arg.info ~doc:"DNS cache size" ["dns-cache"] in
   Mirage_runtime.register_arg Arg.(value & opt (some int) None doc)
@@ -65,9 +73,19 @@ module Main
   let start s http_ctx =
     let open Lwt.Syntax in
     let open Lwt.Infix in
+    let dns_upstream = dns_upstream () in
+    let dns_port = dns_port () in
     let cache_size = dns_cache () in
     let blocklist_url = blocklist_url () in
     let timeout = timeout () in
+
+    let nameservers =
+      match dns_upstream, dns_port with
+      | Some ns, port ->
+        let ns = "udp:"^ns^":"^Int.to_string(port) in
+        Some [ ns ]
+      | _, _ -> None
+    in
 
     Log.info (fun m -> m "downloading %s" blocklist_url);
     let* result = Http_mirage_client.request
@@ -99,7 +117,7 @@ module Main
     in
     (* setup stub forwarding state and IP listeners: *)
     Stub.H.connect_device s >>= fun happy_eyeballs ->
-    let _ = Stub.create ?cache_size ?timeout primary_t ~happy_eyeballs s in
+    let _ = Stub.create ?cache_size ?timeout ?nameservers primary_t ~happy_eyeballs s in
 
     (* Since {Stub.create} registers UDP + TCP listeners asynchronously there
        is no Lwt task.
