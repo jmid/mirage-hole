@@ -49,7 +49,7 @@ module Main
   let ipv4_pair = (3600l,Ipaddr.V4.(Set.singleton localhost))
   let soa       = (Dns.Soa.create (Domain_name.of_string_exn "localhost"))
   let add_dns_entries str t =
-    Logs.warn (fun m -> m "adding domain: \"%s\"" str);
+    Logs.debug (fun m -> m "adding domain: \"%s\"" str);
     match Domain_name.of_string str with
     | Error (`Msg msg) -> (Logs.err (fun m -> m "Invalid domain name: %s" msg); t)
     | Ok name ->
