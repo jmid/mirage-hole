@@ -1,12 +1,13 @@
-open Cmdliner
-
-let src = Logs.Src.create "unikernel" ~doc:"Main unikernel code"
-module Log = (val Logs.src_log src : Logs.LOG)
 
 let argument_error = 64
 
 (* a default/fall-back blocking URL *)
 let url = "https://blocklistproject.github.io/Lists/tracking.txt"
+
+open Cmdliner
+
+let src = Logs.Src.create "unikernel" ~doc:"Main unikernel code"
+module Log = (val Logs.src_log src : Logs.LOG)
 
 let dns_upstream =
   let doc = Arg.info ~doc:"Upstream DNS resolver IP" ["dns-upstream"] in
