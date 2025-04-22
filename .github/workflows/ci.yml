@@ -1,0 +1,42 @@
+name: Main CI workflow
+
+on:
+  pull_request:
+  push:
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+
+        ocaml-compiler:
+#          - 4.08.x
+#          - 4.09.x
+#          - 4.10.x
+#          - 4.11.x
+#          - 4.12.x
+#          - 4.13.x
+          - 4.14.x
+#          - 5.3.x
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Use OCaml ${{ matrix.ocaml-compiler }}
+        uses: ocaml/setup-ocaml@v3
+        with:
+          ocaml-compiler: ${{ matrix.ocaml-compiler }}
+
+      - run: opam install mirage -y
+
+      - run: opam exec -- mirage configure -t unix --dhcp false --net direct
+
+      - run: opam exec -- make depend
+
+      - run: opam exec -- make build
