@@ -42,7 +42,6 @@ let dnsvizor =
       package "dns-tsig";
       package "dns-server";
       package "ca-certs-nss";
-      package "hex";
       package ~pin:"git+https://git.robur.io/robur/http-mirage-client.git" "http-mirage-client";
     ]
   in
