@@ -19,7 +19,6 @@ let dnsvizor =
       package "dns-tsig";
       package "dns-server";
       package "ca-certs-nss";
-      package "hex";
     ]
     "Unikernel.Main"
     (stackv4v6 @-> http_client @-> job)
